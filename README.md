@@ -13,6 +13,10 @@ remembers where you put it.
 
 Hover the icon for the plant's name and estimated time remaining.
 
+The patch's status is only actually broadcast to the client while you're near it in the Farming
+Guild - everywhere else the plugin shows the last reading it confirmed there (remembered across
+sessions), and the tooltip notes its age, e.g. "as of 3h ago", so it's clear when it's not live.
+
 ## Settings
 
 - **Detection radius** — how close (in tiles) you need to be to a farming patch for the frame to appear

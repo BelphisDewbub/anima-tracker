@@ -142,7 +142,7 @@ class AnimaInfoBox extends InfoBox
 			return;
 		}
 
-		int itemId = lifecycle == AnimaLifecycle.DEAD ? ItemID.SKULL : species.getSeedItemId();
+		int itemId = lifecycle == AnimaLifecycle.DEAD ? ItemID.SKULL : species.getPlantIconItemId();
 		BufferedImage icon = itemManager.getImage(itemId);
 		graphics.drawImage(icon, ICON_PADDING, ICON_PADDING, iconSize, iconSize, null);
 	}
@@ -173,9 +173,15 @@ class AnimaInfoBox extends InfoBox
 
 	private String tooltipText(AnimaState state, AnimaLifecycle displayLifecycle)
 	{
+		Optional<Duration> confirmedAge = patchTracker.getConfirmedAge();
+
 		if (state.getLifecycle() == AnimaLifecycle.EMPTY)
 		{
-			return "Anima patch</br>Nothing planted";
+			if (!confirmedAge.isPresent())
+			{
+				return "Anima patch</br>Unknown - visit the Farming Guild to check";
+			}
+			return "Anima patch</br>Nothing planted" + confirmedSuffix(confirmedAge);
 		}
 
 		StringBuilder sb = new StringBuilder(state.getSpecies().getDisplayName());
@@ -183,6 +189,7 @@ class AnimaInfoBox extends InfoBox
 		if (state.getLifecycle() == AnimaLifecycle.DEAD)
 		{
 			sb.append("</br>Dead - replant to restore the buff");
+			sb.append(confirmedSuffix(confirmedAge));
 			return sb.toString();
 		}
 
@@ -203,7 +210,22 @@ class AnimaInfoBox extends InfoBox
 			}
 		});
 
+		sb.append(confirmedSuffix(confirmedAge));
+
 		return sb.toString();
+	}
+
+	/**
+	 * The anima patch's "transmit" varbit only reflects reality while the player is actually near
+	 * it, so anywhere else this indicator is showing the last confirmed reading rather than a
+	 * live one - make that age visible instead of silently presenting stale data as current.
+	 */
+	private static String confirmedSuffix(Optional<Duration> confirmedAge)
+	{
+		return confirmedAge
+			.filter(age -> age.toMinutes() >= 1)
+			.map(age -> "</br>(as of " + formatShort(age) + " ago)")
+			.orElse("");
 	}
 
 	private static String formatShort(Duration duration)

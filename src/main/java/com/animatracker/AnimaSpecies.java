@@ -5,20 +5,20 @@ import net.runelite.api.gameval.ItemID;
 public enum AnimaSpecies
 {
 	NONE(-1),
-	IASOR(ItemID.IASOR_SEED),
-	KRONOS(ItemID.KRONOS_SEED),
-	ATTAS(ItemID.ATTAS_SEED);
+	IASOR(ItemID.ANIMA_IASOR),
+	KRONOS(ItemID.ANIMA_KRONOS),
+	ATTAS(ItemID.ANIMA_ATTAS);
 
-	private final int seedItemId;
+	private final int plantIconItemId;
 
-	AnimaSpecies(int seedItemId)
+	AnimaSpecies(int plantIconItemId)
 	{
-		this.seedItemId = seedItemId;
+		this.plantIconItemId = plantIconItemId;
 	}
 
-	public int getSeedItemId()
+	public int getPlantIconItemId()
 	{
-		return seedItemId;
+		return plantIconItemId;
 	}
 
 	public String getDisplayName()

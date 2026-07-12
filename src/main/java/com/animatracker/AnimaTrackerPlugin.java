@@ -52,7 +52,7 @@ public class AnimaTrackerPlugin extends Plugin
 	{
 		eventBus.register(patchTracker);
 		eventBus.register(patchLocator);
-		animaInfoBox = new AnimaInfoBox(this, client, itemManager, patchTracker, patchLocator, config);
+		animaInfoBox = new AnimaInfoBox(this, client, itemManager, infoBoxManager, patchTracker, patchLocator, config);
 		infoBoxManager.addInfoBox(animaInfoBox);
 		clientThread.invoke(patchTracker::refresh);
 	}

@@ -11,6 +11,7 @@ import net.runelite.api.Player;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.overlay.infobox.InfoBox;
+import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 
 /**
  * A draggable buff-bar-style indicator (same mechanism RuneLite uses for potion/prayer timers)
@@ -25,6 +26,7 @@ class AnimaInfoBox extends InfoBox
 
 	private final Client client;
 	private final ItemManager itemManager;
+	private final InfoBoxManager infoBoxManager;
 	private final AnimaPatchTracker patchTracker;
 	private final NearbyPatchLocator patchLocator;
 	private final AnimaTrackerConfig config;
@@ -36,6 +38,7 @@ class AnimaInfoBox extends InfoBox
 		AnimaTrackerPlugin plugin,
 		Client client,
 		ItemManager itemManager,
+		InfoBoxManager infoBoxManager,
 		AnimaPatchTracker patchTracker,
 		NearbyPatchLocator patchLocator,
 		AnimaTrackerConfig config)
@@ -43,6 +46,7 @@ class AnimaInfoBox extends InfoBox
 		super(null, plugin);
 		this.client = client;
 		this.itemManager = itemManager;
+		this.infoBoxManager = infoBoxManager;
 		this.patchTracker = patchTracker;
 		this.patchLocator = patchLocator;
 		this.config = config;
@@ -128,6 +132,10 @@ class AnimaInfoBox extends InfoBox
 		graphics.dispose();
 
 		setImage(image);
+		// InfoBoxManager only rescales the image into what actually gets rendered when an InfoBox
+		// is first added (or an AsyncBufferedImage finishes loading) - setImage() alone is never
+		// picked up afterwards, so every appearance change has to force that refresh itself.
+		infoBoxManager.updateInfoBoxImage(this);
 		lastRenderedSpecies = species;
 		lastRenderedLifecycle = lifecycle;
 	}

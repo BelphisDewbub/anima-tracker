@@ -4,6 +4,7 @@ import com.google.inject.Provides;
 import javax.inject.Inject;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -20,6 +21,9 @@ public class AnimaTrackerPlugin extends Plugin
 {
 	@Inject
 	private EventBus eventBus;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private OverlayManager overlayManager;
@@ -39,7 +43,7 @@ public class AnimaTrackerPlugin extends Plugin
 		eventBus.register(patchTracker);
 		eventBus.register(patchLocator);
 		overlayManager.add(overlay);
-		patchTracker.refresh();
+		clientThread.invoke(patchTracker::refresh);
 	}
 
 	@Override

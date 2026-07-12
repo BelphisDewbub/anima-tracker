@@ -1,15 +1,17 @@
 # Anima Tracker
 
-Shows a small status frame for your Farming Guild anima patch (Iasor, Kronos, or Attas) whenever
-you're near any farming patch — since the anima buff is global, this is a handy reminder while
-doing farm runs anywhere, not just at the Farming Guild.
+Shows a small draggable status indicator (same style as RuneLite's potion/prayer timer buff icons)
+for your Farming Guild anima patch (Iasor, Kronos, or Attas) whenever you're near any farming
+patch — since the anima buff is global, this is a handy reminder while doing farm runs anywhere,
+not just at the Farming Guild. Drag it anywhere on screen like any other buff indicator; RuneLite
+remembers where you put it.
 
 - **Gray** — nothing planted
 - **Green** — healthy
 - **Yellow** — withering, or estimated to die soon
 - **Red** — dead
 
-Hover the frame for the plant's name and estimated time remaining.
+Hover the icon for the plant's name and estimated time remaining.
 
 ## Settings
 

@@ -2,15 +2,17 @@ package com.animatracker;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 
 @PluginDescriptor(
 	name = "Anima Tracker",
@@ -26,7 +28,13 @@ public class AnimaTrackerPlugin extends Plugin
 	private ClientThread clientThread;
 
 	@Inject
-	private OverlayManager overlayManager;
+	private Client client;
+
+	@Inject
+	private ItemManager itemManager;
+
+	@Inject
+	private InfoBoxManager infoBoxManager;
 
 	@Inject
 	private AnimaPatchTracker patchTracker;
@@ -35,21 +43,25 @@ public class AnimaTrackerPlugin extends Plugin
 	private NearbyPatchLocator patchLocator;
 
 	@Inject
-	private AnimaOverlay overlay;
+	private AnimaTrackerConfig config;
+
+	private AnimaInfoBox animaInfoBox;
 
 	@Override
 	protected void startUp()
 	{
 		eventBus.register(patchTracker);
 		eventBus.register(patchLocator);
-		overlayManager.add(overlay);
+		animaInfoBox = new AnimaInfoBox(this, client, itemManager, patchTracker, patchLocator, config);
+		infoBoxManager.addInfoBox(animaInfoBox);
 		clientThread.invoke(patchTracker::refresh);
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		overlayManager.remove(overlay);
+		infoBoxManager.removeInfoBox(animaInfoBox);
+		animaInfoBox = null;
 		eventBus.unregister(patchLocator);
 		eventBus.unregister(patchTracker);
 	}

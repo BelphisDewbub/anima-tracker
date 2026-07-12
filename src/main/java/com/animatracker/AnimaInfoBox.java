@@ -1,109 +1,94 @@
 package com.animatracker;
 
-import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.Stroke;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.time.Duration;
 import java.util.Optional;
-import javax.inject.Inject;
 import net.runelite.api.Client;
-import net.runelite.api.Perspective;
 import net.runelite.api.Player;
-import net.runelite.api.Point;
-import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.overlay.Overlay;
-import net.runelite.client.ui.overlay.OverlayLayer;
-import net.runelite.client.ui.overlay.OverlayPosition;
-import net.runelite.client.ui.overlay.tooltip.Tooltip;
-import net.runelite.client.ui.overlay.tooltip.TooltipManager;
+import net.runelite.client.ui.overlay.infobox.InfoBox;
 
-public class AnimaOverlay extends Overlay
+/**
+ * A draggable buff-bar-style indicator (same mechanism RuneLite uses for potion/prayer timers)
+ * showing the Farming Guild anima patch's status, visible whenever the player is near any
+ * farming patch. Unlike a world overlay, the user can drag this to wherever they want on screen
+ * and RuneLite remembers the position.
+ */
+class AnimaInfoBox extends InfoBox
 {
 	private static final int FRAME_SIZE = 32;
 	private static final int ICON_PADDING = 4;
-	private static final int HOVER_HEIGHT = FRAME_SIZE + 20;
 
 	private final Client client;
-	private final TooltipManager tooltipManager;
 	private final ItemManager itemManager;
 	private final AnimaPatchTracker patchTracker;
 	private final NearbyPatchLocator patchLocator;
 	private final AnimaTrackerConfig config;
 
-	@Inject
-	AnimaOverlay(
+	private AnimaSpecies lastRenderedSpecies;
+	private AnimaLifecycle lastRenderedLifecycle;
+
+	AnimaInfoBox(
+		AnimaTrackerPlugin plugin,
 		Client client,
-		TooltipManager tooltipManager,
 		ItemManager itemManager,
 		AnimaPatchTracker patchTracker,
 		NearbyPatchLocator patchLocator,
 		AnimaTrackerConfig config)
 	{
+		super(null, plugin);
 		this.client = client;
-		this.tooltipManager = tooltipManager;
 		this.itemManager = itemManager;
 		this.patchTracker = patchTracker;
 		this.patchLocator = patchLocator;
 		this.config = config;
-		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_SCENE);
+		updateAppearance(AnimaSpecies.NONE, AnimaLifecycle.EMPTY);
 	}
 
 	@Override
-	public Dimension render(Graphics2D graphics)
+	public boolean render()
 	{
 		Player localPlayer = client.getLocalPlayer();
-		if (localPlayer == null)
+		if (localPlayer == null || patchLocator.findNearest(localPlayer.getWorldLocation(), config.radius()) == null)
 		{
-			return null;
+			return false;
 		}
-
-		WorldPoint patchLocation = patchLocator.findNearest(localPlayer.getWorldLocation(), config.radius());
-		if (patchLocation == null)
-		{
-			return null;
-		}
-
-		LocalPoint localPoint = LocalPoint.fromWorld(client, patchLocation);
-		if (localPoint == null)
-		{
-			return null;
-		}
-
-		Point canvasPoint = Perspective.localToCanvas(client, localPoint, client.getPlane());
-		if (canvasPoint == null)
-		{
-			return null;
-		}
-
-		int x = canvasPoint.getX() - FRAME_SIZE / 2;
-		int y = canvasPoint.getY() - HOVER_HEIGHT;
 
 		AnimaState state = patchTracker.getState();
 		AnimaLifecycle displayLifecycle = effectiveLifecycle(state);
 
-		graphics.setColor(backgroundColor(displayLifecycle));
-		graphics.fillRoundRect(x, y, FRAME_SIZE, FRAME_SIZE, 8, 8);
-		graphics.setColor(Color.BLACK);
-		graphics.drawRoundRect(x, y, FRAME_SIZE, FRAME_SIZE, 8, 8);
-
-		drawIcon(graphics, state, x, y);
-
-		Rectangle bounds = new Rectangle(x, y, FRAME_SIZE, FRAME_SIZE);
-		Point mousePosition = client.getMouseCanvasPosition();
-		if (mousePosition != null && bounds.contains(mousePosition.getX(), mousePosition.getY()))
+		if (state.getSpecies() != lastRenderedSpecies || displayLifecycle != lastRenderedLifecycle)
 		{
-			tooltipManager.add(new Tooltip(tooltipText(state, displayLifecycle)));
+			updateAppearance(state.getSpecies(), displayLifecycle);
 		}
 
-		return null;
+		setTooltip(tooltipText(state, displayLifecycle));
+		return true;
+	}
+
+	@Override
+	public String getText()
+	{
+		AnimaState state = patchTracker.getState();
+		if (state.getLifecycle() == AnimaLifecycle.EMPTY || state.getLifecycle() == AnimaLifecycle.DEAD)
+		{
+			return "";
+		}
+
+		return estimatedRemaining()
+			.filter(remaining -> !remaining.isNegative())
+			.map(AnimaInfoBox::formatShort)
+			.orElse("");
+	}
+
+	@Override
+	public Color getTextColor()
+	{
+		return Color.WHITE;
 	}
 
 	private AnimaLifecycle effectiveLifecycle(AnimaState state)
@@ -128,35 +113,46 @@ public class AnimaOverlay extends Overlay
 			.map(elapsed -> Duration.ofHours(config.assumedLifespanHours()).minus(elapsed));
 	}
 
-	private void drawIcon(Graphics2D graphics, AnimaState state, int frameX, int frameY)
+	private void updateAppearance(AnimaSpecies species, AnimaLifecycle lifecycle)
+	{
+		BufferedImage image = new BufferedImage(FRAME_SIZE, FRAME_SIZE, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+		graphics.setColor(backgroundColor(lifecycle));
+		graphics.fillRoundRect(0, 0, FRAME_SIZE, FRAME_SIZE, 8, 8);
+		graphics.setColor(Color.BLACK);
+		graphics.drawRoundRect(0, 0, FRAME_SIZE - 1, FRAME_SIZE - 1, 8, 8);
+
+		drawIcon(graphics, species, lifecycle);
+		graphics.dispose();
+
+		setImage(image);
+		lastRenderedSpecies = species;
+		lastRenderedLifecycle = lifecycle;
+	}
+
+	private void drawIcon(Graphics2D graphics, AnimaSpecies species, AnimaLifecycle lifecycle)
 	{
 		int iconSize = FRAME_SIZE - ICON_PADDING * 2;
-		int iconX = frameX + ICON_PADDING;
-		int iconY = frameY + ICON_PADDING;
 
-		if (state.getLifecycle() == AnimaLifecycle.EMPTY)
+		if (lifecycle == AnimaLifecycle.EMPTY)
 		{
-			drawProhibitionGlyph(graphics, iconX, iconY, iconSize);
+			drawProhibitionGlyph(graphics, ICON_PADDING, ICON_PADDING, iconSize);
 			return;
 		}
 
-		int itemId = state.getLifecycle() == AnimaLifecycle.DEAD ? ItemID.SKULL : state.getSpecies().getSeedItemId();
-		BufferedImage image = itemManager.getImage(itemId);
-		graphics.drawImage(image, iconX, iconY, iconSize, iconSize, null);
+		int itemId = lifecycle == AnimaLifecycle.DEAD ? ItemID.SKULL : species.getSeedItemId();
+		BufferedImage icon = itemManager.getImage(itemId);
+		graphics.drawImage(icon, ICON_PADDING, ICON_PADDING, iconSize, iconSize, null);
 	}
 
 	private static void drawProhibitionGlyph(Graphics2D graphics, int x, int y, int size)
 	{
-		Stroke previousStroke = graphics.getStroke();
-		Color previousColor = graphics.getColor();
-
 		graphics.setColor(Color.WHITE);
-		graphics.setStroke(new BasicStroke(2f));
+		graphics.setStroke(new java.awt.BasicStroke(2f));
 		graphics.drawOval(x, y, size, size);
 		graphics.drawLine(x + 2, y + size - 2, x + size - 2, y + 2);
-
-		graphics.setStroke(previousStroke);
-		graphics.setColor(previousColor);
 	}
 
 	private static Color backgroundColor(AnimaLifecycle lifecycle)
@@ -203,14 +199,30 @@ public class AnimaOverlay extends Overlay
 		{
 			if (!remaining.isNegative())
 			{
-				sb.append("</br>~").append(formatDuration(remaining)).append(" remaining (estimate)");
+				sb.append("</br>~").append(formatLong(remaining)).append(" remaining (estimate)");
 			}
 		});
 
 		return sb.toString();
 	}
 
-	private static String formatDuration(Duration duration)
+	private static String formatShort(Duration duration)
+	{
+		long totalMinutes = duration.toMinutes();
+		long days = totalMinutes / (24 * 60);
+		if (days > 0)
+		{
+			return days + "d";
+		}
+		long hours = totalMinutes / 60;
+		if (hours > 0)
+		{
+			return hours + "h";
+		}
+		return totalMinutes + "m";
+	}
+
+	private static String formatLong(Duration duration)
 	{
 		long totalMinutes = duration.toMinutes();
 		long days = totalMinutes / (24 * 60);

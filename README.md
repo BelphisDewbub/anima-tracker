@@ -22,3 +22,7 @@ sessions), and the tooltip notes its age, e.g. "as of 3h ago", so it's clear whe
 - **Detection radius** — how close (in tiles) you need to be to a farming patch for the frame to appear
 - **Warn before estimated death** — minutes of advance warning before the plant is estimated to die
 - **Assumed anima lifespan** — assumed total lifespan in hours, used only for the estimate
+
+## Credits
+
+Dedicated to OneNutNick, whose idea this plugin is based on.
